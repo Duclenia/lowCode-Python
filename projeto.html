@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construtor de Sites - Low Code</title>
+    <link rel="stylesheet" href="static/css/styleLowCode.css">
+
+    <link href="static/css/animate.css" rel="stylesheet">
+    <link href="static/css/all.min.css" rel="stylesheet">
+    <link href="static/css/bootstrap-icons.css" rel="stylesheet">
+    <link href="static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="static/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="../https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+
+</head>
+
+<body>
+    <div class="container-fluid bg-primary newsletter ">
+        <div class="container">
+            <div class="navbar navbar-expand-lg navbar-dark p-0">
+                <button class="action-btn" id="saveProjectBtn" onclick="saveProject()" style="display: none;">Salvar
+                    Projeto</button>
+                <a href="perfil.html" class="action-btn">Perfil</a>
+
+                <button class="action-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="container-fluid  newsletter py-5">
+        <div class="container">
+
+            <div class="workspace">
+
+
+                <div class="preview-area" id="">
+                    <div class="row">
+                        <div class="container">
+                            <h1 class="mt-4">Meus Projetos</h1>
+                            <div class="row" id="projectList">
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Novo Projeto</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="projectName" class="col-form-label">Nome:</label>
+                            <input type="text" class="form-control" name="projectName" id="projectName">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="createProject()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="static/js/user.js"></script>
+    <script>
+        async function loadProjects() {
+            try {
+                const API_URL = "http://localhost:8000/api/v1";
+                const response = await fetch(`${API_URL}/projetos/${getAuth()}`, {
+                    headers: {
+                        "Authorization": `Bearer ${getToken()}`
+                    }
+                });
+                const projects = await response.json();
+
+                let projectList = document.getElementById('projectList');
+                projectList.innerHTML = projects.map(project => `
+                    <div class="col-sm-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">${project.nome}</h5>
+                                <p class="card-text">Projeto criado pelo usuário.</p>
+                                <a href="projetoIndex.html?id=${project.id}" class="btn btn-primary">Abrir Projeto</a>
+                                <a onclick="deleteProjeto(${project.id})" class="btn btn-danger">Elininar</a>
+                           
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                projectList.innerHTML +=
+                    `<div class="col-sm-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"></h5>
+                              <p class="card-text">Adicionar</p>
+                                 <a data-toggle="modal" data-target="#exampleModal" href=""class="btn btn-primary">+</a>
+                        </div>
+                    </div>
+                 </div>`;
+            } catch (error) {
+                console.error("Erro ao carregar projetos:", error);
+                projectList.innerHTML +=
+                `<div class="col-sm-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"></h5>
+                          <p class="card-text">Adicionar</p>
+                             <a data-toggle="modal" data-target="#exampleModal" href=""class="btn btn-primary">+</a>
+                    </div>
+                </div>
+             </div>`
+            }
+        }
+
+        window.onload = loadProjects;
+        
+        document.addEventListener("DOMContentLoaded", function () {
+          
+            const token = getAuth();
+             
+             if (!token) {
+                 window.location.href = "index.html";
+             } 
+         });
+        async function createProject() {
+            const projectName = document.getElementById("projectName").value.trim();
+            if (!projectName) {
+                alert("O nome do projeto é obrigatório.");
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/projetos`, {
+                method: 'POST',
+                headers: {
+                    "Authorization": `Bearer ${getToken()}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: projectName,
+                    id_user: getAuth()
+                })
+            });
+            const data = await response.json();
+            window.location.href = `projetoIndex.html?id=${data.projeto}`;
+            if (data.error) {
+                throw new Error(data.erro || "Erro ao criar projeto");
+            }
+        }
+
+        function deleteProjeto(projeto_id) {
+            const confirmacao = confirm("Tem certeza que deseja excluir este item?");
+
+            if (confirmacao) {
+                fetch(`${API_URL}/projetos/${projeto_id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            "Authorization": `Bearer ${getToken()}`
+                        },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Projeto eliminado:", data);
+                        alert("Projeto excluído com sucesso!");
+                        location.reload();
+                    })
+                    .catch(error => console.error("Erro ao eliminar componente:", error));
+            }
+
+        }
+    </script>
+
+    <script src="static/js/jquery.min.js"></script>
+    <script src="static/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous">
+    </script>
+
+</body>
+
+</html>
